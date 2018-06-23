@@ -5,7 +5,7 @@ import numpy as np
 packets = rdpcap('../botnet-capture-20110810-neris.pcap')
 
 def to_src_dst(packets):
-    ''' Gets the IP addresses from the packets. '''
+    ''' Gets the source and destination IP addresses from the packets. '''
     srcs = []
     dsts = []
     for i in range(len(packets)):
@@ -13,17 +13,17 @@ def to_src_dst(packets):
         dsts.append(packets[i].dst)
     return np.column_stack((np.array(srcs), np.array(dsts)))
 
-def make_C(pairs, ip1, ip2):
-    srcbools = pairs[:,0] == ip1
-    dstbools = pairs[:,1] == ip2
-    return np.column_stack((srcsbools, dstsbools))
+def make_C(src_dsts, ip1, ip2):
+    srcbools = src_dsts[:,0] == ip1
+    dstbools = src_dsts[:,1] == ip2
+    return np.column_stack((srcbools, dstbools))
 
 def minhash(C, num_perm=128):
     '''
-    Implements MIN-WISE hashing.
+    Implements MIN-WISE hashing, this approximated the jaccard similarity.
 
     Arguments:
-    C : [[Bool]] = Input matrix, contains True whenever one of the important IP-addresses appears.
+    C : [[Bool]] = Input matrix, contains True whenever one of the important IP addresses appears.
 
     Returns:
     Double = Approximation of the Jaccard similarity
@@ -45,10 +45,32 @@ def minhash(C, num_perm=128):
         firsts.append(first)
 
     firsts = np.array(firsts)
-    total = sum(map(any, C))
 
-    return np.sum(firsts[:,0] == firsts[:,1]) / total
+    return np.sum(firsts[:,0] == firsts[:,1]) / len(firsts)
 
+def jaccard(C):
+    ''' Calculated the Jaccard similarity. '''
+    total = sum(sum(C))
+    intersect = sum(map(all, C))
+    return intersect / (total - intersect)
+
+def similarity(src_dsts, ip1, ip2, num_perm=128):
+    '''
+    Uses both the Jaccard similarity and the MinHash to calculate the Jaccard similarity, allows for comparing the two.
+
+    Arguments:
+    src_dsts : [[String]] = list of pairs of sources and destinations.
+    ip1 : String = sender IP address.
+    ip2 : String = receiver IP address.
+    '''
+    C = make_C(src_dsts, ip1, ip2)
+    jac = jaccard(C)
+    mh = minhash(C, num_perm)
+    return (jac, mh)
+
+def all_sim(src_dsts, pairs):
+    ''' Applies similarity() to all pairs of IP addresses. '''
+    return map(lambda ips: similarity(src_dsts, ips[0], ips[1]), pairs)
 
 
 src_dsts = to_src_dst(packets)
