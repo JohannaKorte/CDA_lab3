@@ -71,17 +71,29 @@ def similarity(src_dsts, ip1, ip2, num_perm=128):
     mh = minhash(C, num_perm)
     return (jac, mh)
 
-def all_sim(src_dsts, pairs):
+def all_sim(src_dsts, pairs, num_perm=128):
     ''' Applies similarity() to all pairs of IP addresses. '''
-    return map(lambda ips: similarity(src_dsts, ips[0], ips[1]), pairs)
+    return map(lambda ips: similarity(src_dsts, ips[0], ips[1], num_perm), pairs)
 
+def squared_error(pqs):
+    return sum([(pq[0]-pq[1])**2 for pq in pqs])
+
+def benchmark(src_dsts, pairs):
+    sims = []
+    # get some similarities
+    for i in [3, 10, 30, 100, 300, 1000]:
+        print(f"Estimating jaccard with {i} loops")
+        sims.append(all_sim(src_dsts, pairs, i))
+    # check error
+    errors = [squared_error(sim) for sim in sims]
+    return errors
 
 src_dsts = to_src_dst(packets)
 
 # Jaccard similarity can be computed by having the sizes of each of the sets as well as their overlap
 # list of unique sources and destinations and the amount of times they appear in the dataset
-#unique_srcs = np.unique(src_dsts[:,0], return_counts=True)
-#unique_dsts = np.unique(src_dsts[:,1], return_counts=True)
+unique_srcs = np.unique(src_dsts[:,0], return_counts=True)
+unique_dsts = np.unique(src_dsts[:,1], return_counts=True)
 
 # list of unique source/destination pairs and the amount of times they appear in the dataset
 unique_pairs = np.unique(src_dsts, return_counts=True, axis=0)
