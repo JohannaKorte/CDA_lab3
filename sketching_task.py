@@ -1,6 +1,6 @@
 from scapy.all import rdpcap
 import numpy as np
-from sampling_task import to_src_dst
+from sampling_task import to_src_dst, packets
 
 # import the dataset, may take a few minutes
 #packets = rdpcap('../botnet-capture-20110810-neris.pcap')
@@ -49,9 +49,12 @@ unique_dsts = np.unique(src_dsts[:,1], return_counts=True)
 unique_pairs = np.unique(src_dsts, return_counts=True, axis=0)
 
 # real stuff
-srcdsts = map(lambda sd: ' '.join(sd), src_dsts)
+srcdsts = list(map(lambda sd: ' '.join(sd), src_dsts))
 
 hash_fns = gen_hash_fns()
 cd_table = gen_cd_table()
 
+# This contains the final table, just feed it to cm_count to get the results back
 cm = cm_add_all(cd_table, hash_fns, srcdsts)
+# cm_count example
+count = cm_count(cm, hash_fns, '08:00:27:b5:b7:19 00:1e:49:db:19:c3')
