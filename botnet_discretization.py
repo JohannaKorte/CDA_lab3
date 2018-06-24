@@ -119,14 +119,15 @@ def mapping(data, feature, value):
 
 
 if __name__ == '__main__':
-    # print "Preprocessing file...."
-    # preprocess(downloaded_file, data_file)
+    print "Preprocessing file...."
+    preprocess(downloaded_file, data_file)
     print "Loading data..."
     dataframe = load_data(data_file)
     print "Removing background flows..."
     dataframe = remove_background(dataframe)
     print "Getting infected host data..."
     infected_host_data = get_host_data(dataframe, infected_host_ip)
+    print infected_host_data
     print "Visualizing packets and protocol features..."
     visualize(infected_host_data)
     print "Discretizing infected host data..."
