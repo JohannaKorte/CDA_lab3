@@ -3,6 +3,7 @@ import csv
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
+import math
 
 # PARAMETERS
 downloaded_file = 'capture20110818.pcap.netflow.labeled'
@@ -63,10 +64,73 @@ def visualize(data):
     return
 
 
-if __name__ == '__main__':
-    #preprocess(downloaded_file, data_file)
-    dataframe = load_data(data_file)
-    dataframe = remove_background(dataframe)
-    infected_host_data = get_host_data(dataframe, infected_host_ip)
-    visualize(infected_host_data)
+def discretize(data, features):
+    """ Discretizes the protocol and packets features into one feature using the method presented
+    by Pellegrino et al. """
+    pd.options.mode.chained_assignment = None       # default='warn'
+    data["code"] = 100                              # Create new column for combined code attribute
+    m = []
+    for feature in features:
+        m.append(len(set(data[feature].tolist())))  # Save number of unique attributes per feature to list
 
+    indices = data.index.values
+    for j in indices:                               # Row indices
+        code = 0
+        spacesize = np.prod(m)                      # Calculate spacesize as the product of M list
+        for i in range(len(features)):
+            feature = features[i]                   # Get feature name
+            code += mapping(data, feature, data[feature][j]) * spacesize/m[i]
+            spacesize = spacesize / m[i]
+        data["code"][j] = code                      # Add new value to dataframe
+    return data
+
+
+def mapping(data, feature, value):
+    """ Given the data, the name of the feature and its value, returns a mapping to an integer
+    to be used for discretization. """
+    if feature == "packets":
+        size = len(data["packets"])
+        lowp = math.ceil(20/100 * size)
+        med1p = math.ceil(40/100 * size)
+        med2p = math.ceil(60/100 * size)
+        highp = math.ceil(80/100 * size)
+        if value <= lowp:
+            mapped = 0
+        elif value <= med1p:
+            mapped = 1
+        elif value <= med2p:
+            mapped = 2
+        elif value <= highp:
+            mapped = 3
+        else:
+            mapped = 4
+    elif feature == "protocol":
+        if value == 'ICMP':
+            mapped = 2
+        elif value == 'TCP':
+            mapped = 0
+        elif value == 'UDP':
+            mapped = 1
+        else:
+            return 1000000
+    else:
+        return 1000000
+    return mapped
+
+
+if __name__ == '__main__':
+    # print "Preprocessing file...."
+    # preprocess(downloaded_file, data_file)
+    print "Loading data..."
+    dataframe = load_data(data_file)
+    print "Removing background flows..."
+    dataframe = remove_background(dataframe)
+    print "Getting infected host data..."
+    infected_host_data = get_host_data(dataframe, infected_host_ip)
+    print "Visualizing packets and protocol features..."
+    visualize(infected_host_data)
+    print "Discretizing infected host data..."
+    discretize(infected_host_data, ["packets", "protocol"])
+    print "Discretizing all data... (THIS MAY TAKE A FEW MINUTES)"
+    discretized_data = discretize(dataframe, ["packets", "protocol"])
+    print "Discretization done!"
